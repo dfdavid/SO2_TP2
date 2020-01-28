@@ -3,12 +3,13 @@
 #include <netcdf.h>
 #include <fcntl.h>
 
-
+#define COD_ERROR 2
+#define ERROR(e) {printf("Error: %s\n", nc_strerror(e)); exit(COD_ERROR);}
 #define NX 21696
 #define NY 21696
 #define NKERNEL 3
-
 #define ARCHIVO "../includes/OR_ABI-L2-CMIPF-M6C02_G16_s20191011800206_e20191011809514_c20191011809591.nc"
+
 
 int main() {
 
@@ -66,10 +67,154 @@ int main() {
 
     Definition at line 635 of file dfile.c
     */
-    (ret_value= nc_open(ARCHIVO, 0, &nc_id) );
 
-    if( )
 
-        return 0;
+    if( ((ret_value= nc_open(ARCHIVO, NC_NOWRITE, &nc_id) ))){
+        ERROR(ret_value)
+    }
+
+    //obtencion de elvarID de la variable CMI
+    /*
+    nc_inq_varid()
+    int nc_inq_varid (int ncid, const char *name, int *varidp)
+
+        Find the ID of a variable, from the name.
+
+        The function nc_inq_varid returns the ID of a netCDF variable, given its name.
+
+        Parameters
+            ncid	NetCDF or group ID, from a previous call to nc_open(), nc_create(), nc_def_grp(), or associated inquiry functions such as nc_inq_ncid().
+            name	Name of the variable.
+            varidp	Pointer to location for returned variable ID. Ignored if NULL.
+
+        Returns
+            NC_NOERR No error.
+            NC_EBADID Bad ncid.
+            NC_ENOTVAR Invalid variable ID.
+
+        Example
+
+        Here is an example using nc_inq_varid to find out the ID of a variable named rh in an existing netCDF dataset named foo.nc:
+        #include <netcdf.h>
+           ...
+        int  status, ncid, rh_id;
+           ...
+        status = nc_open("foo.nc", NC_NOWRITE, &ncid);
+        if (status != NC_NOERR) handle_error(status);
+           ...
+        status = nc_inq_varid (ncid, "rh", &rh_id);
+        if (status != NC_NOERR) handle_error(status);
+
+        Definition at line 62 of file dvarinq.c.
+    */
+    if((ret_value= nc_inq_varid(nc_id, "CMI", &var_id)))
+        ERROR(ret_value)
+
+    //lectura de la matriz
+    /*
+             nc_get_vara_float()
+
+             int nc_get_vara_float (int ncid, int varid, const size_t *startp, const size_t *countp, float *ip)
+
+        Read an array of values from a variable.
+
+        The array to be read is specified by giving a corner and a vector of edge lengths to Specify a Hyperslab.
+
+        The data values are read into consecutive locations with the last dimension varying fastest. The netCDF dataset must be in data mode (for netCDF-4/HDF5 files, the switch to data mode will happen automatically, unless the classic model is used).
+
+        The nc_get_vara() function will read a variable of any type, including user defined type. For this function, the type of the data in memory must match the type of the variable - no data conversion is done.
+
+        Other nc_get_vara_ functions will convert data to the desired output type as needed.
+
+        Parameters
+            ncid	NetCDF or group ID, from a previous call to nc_open(), nc_create(), nc_def_grp(), or associated inquiry functions such as nc_inq_ncid().
+            varid	Variable ID
+            startp	Start vector with one element for each dimension to Specify a Hyperslab.
+            countp	Count vector with one element for each dimension to Specify a Hyperslab.
+            ip	Pointer where the data will be copied. Memory must be allocated by the user before this function is called.
+
+        Returns
+            NC_NOERR No error.
+            NC_ENOTVAR Variable not found.
+            NC_EINVALCOORDS Index exceeds dimension bound.
+            NC_EEDGE Start+count exceeds dimension bound.
+            NC_ERANGE One or more of the values are out of range.
+            NC_EINDEFINE Operation not allowed in define mode.
+            NC_EBADID Bad ncid.
+
+        Example
+
+        Here is an example using nc_get_vara_double() to read all the values of the variable named rh from an existing netCDF dataset named foo.nc. For simplicity in this example, we assume that we know that rh is dimensioned with time, lat, and lon, and that there are three time values, five lat values, and ten lon values.
+        #include <netcdf.h>
+           ...
+        #define TIMES 3
+        #define LATS 5
+        #define LONS 10
+        int  status;
+        int ncid;
+        int rh_id;
+        static size_t start[] = {0, 0, 0};
+        static size_t count[] = {TIMES, LATS, LONS};
+        double rh_vals[TIMES*LATS*LONS];
+           ...
+        status = nc_open("foo.nc", NC_NOWRITE, &ncid);
+        if (status != NC_NOERR) handle_error(status);
+           ...
+        status = nc_inq_varid (ncid, "rh", &rh_id);
+        if (status != NC_NOERR) handle_error(status);
+           ...
+        status = nc_get_vara_double(ncid, rh_id, start, count, rh_vals);
+        if (status != NC_NOERR) handle_error(status);
+
+        Author
+            Glenn Davis, Russ Rew, Ed Hartnett, Dennis Heimbigner, Ward Fisher
+
+        Examples:
+            pres_temp_4D_rd.c.
+
+        Definition at line 805 of file dvarget.c.
+
+     */
+    if( (ret_value=nc_get_vara_float(nc_id, var_id, inicio, cuenta, data_in)) )
+        ERROR(ret_value)
+
+    // se cierra el archivo nc y se liberan los recursos
+    /*
+        nc_close()
+            int nc_close(int ncid)
+
+        Close an open netCDF dataset.
+
+        If the dataset in define mode, nc_enddef() will be called before closing. (In this case, if nc_enddef() returns an error, nc_abort() will automatically be called to restore the dataset to the consistent state before define mode was last entered.) After an open netCDF dataset is closed, its netCDF ID may be reassigned to the next netCDF dataset that is opened or created.
+
+        Parameters
+            ncid	NetCDF ID, from a previous call to nc_open() or nc_create().
+
+        Returns
+            NC_NOERR No error.
+            NC_EBADID Invalid id passed.
+            NC_EBADGRPID ncid did not contain the root group id of this file. (NetCDF-4 only).
+
+        Example
+
+        Here is an example using nc_close to finish the definitions of a new netCDF dataset named foo.nc and release its netCDF ID:
+        #include <netcdf.h>
+           ...
+        int status = NC_NOERR;
+        int ncid;
+           ...
+        status = nc_create("foo.nc", NC_NOCLOBBER, &ncid);
+        if (status != NC_NOERR) handle_error(status);
+           ...   create dimensions, variables, attributes
+        status = nc_close(ncid);
+        if (status != NC_NOERR) handle_error(status);
+
+        Definition at line 1271 of file dfile.c.
+
+    */
+    if( ( ret_value=nc_close(nc_id)  )  )
+        ERROR(ret_value)
+
+    return 0;
 }
 
