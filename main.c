@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <netcdf.h>
+//#include <fcntl.h>
+#include <omp.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #define COD_ERROR 2
 #define ERROR(e) {printf("Error: %s\n", nc_strerror(e)); exit(COD_ERROR);}
@@ -11,13 +14,20 @@
 #define ARCHIVO "../includes/OR_ABI-L2-CMIPF-M6C02_G16_s20191011800206_e20191011809514_c20191011809591.nc"
 
 
+#define FILE_OUT_TIMES "../data/tiempos_omp.txt"
+#define FILE_OUT_BIN  "../includes/imagen_filtrada.bin"
+
+void convolucion(float *dato_entrada, float kernel[3][3], float *salida);
+
+void write_to_bin(float *dato_entrada);
+
 int main() {
 
     /*
      * http://cortesfernando.blogspot.com/2011/10/malloc-vs-calloc.html
      */
-    float *dato_saliente=(float*)calloc((NX-NKERNEL+1) * (NY-NKERNEL+1), sizeof(float));
-    float *data_in= (float*)calloc(NX*NY, sizeof(float));
+    float *dato_salida=(float*)calloc((NX-NKERNEL+1) * (NY-NKERNEL+1), sizeof(float));
+    float *dato_entrada= (float*)calloc(NX*NY, sizeof(float));
     float kernel [NKERNEL][NKERNEL]={{-1. -1, -1},
                                      {-1,  8, -1},
                                      {-1. -1, -1}};
@@ -175,7 +185,7 @@ int main() {
         Definition at line 805 of file dvarget.c.
 
      */
-    if( (ret_value=nc_get_vara_float(nc_id, var_id, inicio, cuenta, data_in)) )
+    if( (ret_value=nc_get_vara_float(nc_id, var_id, inicio, cuenta, dato_entrada)) )
         ERROR(ret_value)
 
     // se cierra el archivo nc y se liberan los recursos
@@ -215,6 +225,71 @@ int main() {
     if( ( ret_value=nc_close(nc_id)  )  )
         ERROR(ret_value)
 
+    //aca se procesan los datos: se hace la convolucion
+    printf("procesando...\n");
+    double start_time= omp_get_wtime(); //https://www.openmp.org/spec-html/5.0/openmpsu160.html
+    convolucion(dato_entrada, kernel, dato_salida);
+    double tiempo= omp_get_wtime()- start_time;
+    printf("Procesamiento terminado. Tiempo empleado: %f\n", tiempo);
+    free(dato_entrada); //de que libreria es esta funcion?
+    
+    //escribir los resultados en el nc (dato_salida)
+    printf("Escribiendo la salida en binario\n");
+    write_to_bin(dato_salida);
+    free(dato_salida); //otra vez esta funcion. De que libreria es?
+    
+    //Registracion  del tiempo de ejecucion en un archivo txt
+    printf("Registrando tiempo de ejecucion en archivo\n");
+    FILE *tiempos_file;
+    tiempos_file= fopen(FILE_OUT_TIMES, "a");
+    fprintf(tiempos_file, "%f\n", tiempo); //int fprintf(FILE *stream, const char *format, ...)
+    fclose(tiempos_file);
+    
+    printf("Todo listo. Saliendo");
+    
     return 0;
+}
+
+/**
+ * @brief Guarda el archivo de imagen pasado como parametro como un archivo binario de floats
+ * @param dato_entrada Es un puntero float que sera guardado como binario
+ */
+void write_to_bin(float *dato_entrada) {
+    int fd;
+    fd = open(FILE_OUT_BIN, O_WRONLY|O_CREAT|O_TRUNC, 0666);
+    if(fd < 0){
+        perror("error al crear el archivo de salida\n");
+        return;
+    }
+
+    if ( ( write(fd, dato_entrada, sizeof(float)*(NX-NKERNEL+1)*(NY-NKERNEL+1))) < 0 ){
+        perror("error al escribir el archivo\n");
+        exit(EXIT_FAILURE);
+    }
+
+    close(fd);
+
+}
+
+/**
+ * @brief Esta funcion hace la convolucion entre el 'kernel' y el dato_entrada
+ * @param dato_entrada  
+ * @param kernel 
+ * @param salida 
+ */
+void convolucion(float *dato_entrada, float kernel[3][3], float *salida) {
+
+    #pragma omp parallel for collpse (2) //estudiar
+    for (int fil_img = 0; fil_img < (NX-NKERNEL+1); fil_img++){ //recorro las filas de la imagen
+        for (int col_img=0; col_img < (NY-NKERNEL+1); col_img++){ //recorro las columnas de la imagen
+            for( int fil_kernel = 0; fil_kernel < NKERNEL; fil_kernel++){ //recorro las filas del kernel
+                for( int col_kernel = 0; col_kernel < NKERNEL; col_kernel++){ //recorro las columnas del kernel
+
+                    salida[fil_img * (NX-NKERNEL+1)+col_img]+= dato_entrada[(fil_img+fil_kernel) * NX + (col_img + col_kernel)]*kernel[fil_kernel][col_kernel];
+                }//columna ker
+            }// fila ker
+        } //columna img
+    } // fila img
+    
 }
 
