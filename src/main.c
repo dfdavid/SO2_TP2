@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <netcdf.h>
-//#include <fcntl.h>
-#include <omp.h>
 #include <fcntl.h>
+#include <omp.h>
 #include <unistd.h>
 
 #define COD_ERROR 2
@@ -20,6 +19,8 @@
 void convolucion(float *dato_entrada, float kernel[3][3], float *salida);
 
 void write_to_bin(float *dato_entrada);
+
+void write_to_nc();
 
 int main() {
 
@@ -279,7 +280,7 @@ void write_to_bin(float *dato_entrada) {
  */
 void convolucion(float *dato_entrada, float kernel[3][3], float *salida) {
 
-    #pragma omp parallel for collpse (2) //estudiar
+    #pragma omp parallel for collapse (2) //estudiar
     for (int fil_img = 0; fil_img < (NX-NKERNEL+1); fil_img++){ //recorro las filas de la imagen
         for (int col_img=0; col_img < (NY-NKERNEL+1); col_img++){ //recorro las columnas de la imagen
             for( int fil_kernel = 0; fil_kernel < NKERNEL; fil_kernel++){ //recorro las filas del kernel
