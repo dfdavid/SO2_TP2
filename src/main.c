@@ -48,6 +48,7 @@ int main() {
     printf("leyendo archivo NC a memoria\n");
     /*
     https://www.unidata.ucar.edu/software/netcdf/docs/group__datasets.html#gaccbdb128a1640e204831256dbbc24d3e
+
     int nc_open 	(const char *path, int omode, int *ncidp)
     Open an existing netCDF file.
             This function opens an existing netCDF dataset for access. It determines the underlying file format automatically. Use the same call to open a netCDF classic or netCDF-4 file.
@@ -55,9 +56,11 @@ int main() {
     path	File name for netCDF dataset to be opened. When the dataset is located on some remote server, then the path may be an OPeNDAP URL rather than a file path.
             omode	The open mode flag may include NC_WRITE (for read/write access) and NC_SHARE (see below) and NC_DISKLESS (see below).
     ncidp	Pointer to location where returned netCDF ID is to be stored.
+
             Open Mode
     A zero value (or NC_NOWRITE) specifies the default behavior: open the dataset with read-only access, buffering and caching accesses for efficiency.
     Here is an example using nc_open()to open an existing netCDF dataset named foo.nc for read-only, non-shared access:
+
      #include <netcdf.h>
     ...
     int status = NC_NOERR;
@@ -65,10 +68,12 @@ int main() {
     ...
     status = nc_open("foo.nc", 0, &ncid);
     if (status != NC_NOERR) handle_error(status);
+
     Author
     Glenn Davis, Ed Hartnett, Dennis Heimbigner
     Definition at line 635 of file dfile.c
     */
+
 
 
     ret_value= nc_open(ARCHIVO, 0, &nc_id );
@@ -84,15 +89,17 @@ int main() {
     int nc_inq_varid (int ncid, const char *name, int *varidp)
         Find the ID of a variable, from the name.
         The function nc_inq_varid returns the ID of a netCDF variable, given its name.
+
         Parameters
             ncid	NetCDF or group ID, from a previous call to nc_open(), nc_create(), nc_def_grp(), or associated inquiry functions such as nc_inq_ncid().
             name	Name of the variable.
             varidp	Pointer to location for returned variable ID. Ignored if NULL.
+
         Returns
             NC_NOERR No error.
             NC_EBADID Bad ncid.
             NC_ENOTVAR Invalid variable ID.
-        Example
+
         Here is an example using nc_inq_varid to find out the ID of a variable named rh in an existing netCDF dataset named foo.nc:
         #include <netcdf.h>
            ...
@@ -103,6 +110,7 @@ int main() {
            ...
         status = nc_inq_varid (ncid, "rh", &rh_id);
         if (status != NC_NOERR) handle_error(status);
+
         Definition at line 62 of file dvarinq.c.
     */
     if((ret_value= nc_inq_varid(nc_id, "CMI", &var_id)))
@@ -117,12 +125,14 @@ int main() {
         The data values are read into consecutive locations with the last dimension varying fastest. The netCDF dataset must be in data mode (for netCDF-4/HDF5 files, the switch to data mode will happen automatically, unless the classic model is used).
         The nc_get_vara() function will read a variable of any type, including user defined type. For this function, the type of the data in memory must match the type of the variable - no data conversion is done.
         Other nc_get_vara_ functions will convert data to the desired output type as needed.
+
         Parameters
             ncid	NetCDF or group ID, from a previous call to nc_open(), nc_create(), nc_def_grp(), or associated inquiry functions such as nc_inq_ncid().
             varid	Variable ID
             startp	Start vector with one element for each dimension to Specify a Hyperslab.
             countp	Count vector with one element for each dimension to Specify a Hyperslab.
             ip	Pointer where the data will be copied. Memory must be allocated by the user before this function is called.
+
         Returns
             NC_NOERR No error.
             NC_ENOTVAR Variable not found.
@@ -131,6 +141,7 @@ int main() {
             NC_ERANGE One or more of the values are out of range.
             NC_EINDEFINE Operation not allowed in define mode.
             NC_EBADID Bad ncid.
+
         Example
         Here is an example using nc_get_vara_double() to read all the values of the variable named rh from an existing netCDF dataset named foo.nc. For simplicity in this example, we assume that we know that rh is dimensioned with time, lat, and lon, and that there are three time values, five lat values, and ten lon values.
         #include <netcdf.h>
@@ -153,6 +164,7 @@ int main() {
            ...
         status = nc_get_vara_double(ncid, rh_id, start, count, rh_vals);
         if (status != NC_NOERR) handle_error(status);
+
         Author
             Glenn Davis, Russ Rew, Ed Hartnett, Dennis Heimbigner, Ward Fisher
         Examples:
@@ -174,6 +186,7 @@ int main() {
             NC_NOERR No error.
             NC_EBADID Invalid id passed.
             NC_EBADGRPID ncid did not contain the root group id of this file. (NetCDF-4 only).
+
         Example
         Here is an example using nc_close to finish the definitions of a new netCDF dataset named foo.nc and release its netCDF ID:
         #include <netcdf.h>
@@ -186,6 +199,7 @@ int main() {
            ...   create dimensions, variables, attributes
         status = nc_close(ncid);
         if (status != NC_NOERR) handle_error(status);
+
         Definition at line 1271 of file dfile.c.
     */
     if( ( ret_value=nc_close(nc_id)  )  )
