@@ -13,11 +13,11 @@
 #define ARCHIVO "/home/sampaxx/Escritorio/SistemasOperativosII/TP2/includes/OR_ABI-L2-CMIPF-M6C02_G16_s20191011800206_e20191011809514_c20191011809591.nc"
 // //Escritorio/SistemasOperativosII/TP2/includes
 
-#define FILE_OUT_TIMES "./data/tiempos_omp.txt"
-#define FILE_OUT_BIN  "./includes/imagen_filtrada.bin"
+#define FILE_OUT_TIMES "./tiempos_omp.txt"
+#define FILE_OUT_BIN  "./imagen_filtrada.bin"
 #define PATH_MAX 300
 
-void convolucion(float *dato_entrada, float kernel[3][3], float *salida);
+void convolucion(float *dato_entrada, float kernel[3][3], float *salida, int num_threads);
 
 void write_to_bin(float *dato_entrada);
 
@@ -25,7 +25,7 @@ void write_to_nc();
 
 void get_dir();
 
-int main() {
+int main(int argc, char* argv[]) {
 
     /*
      * http://cortesfernando.blogspot.com/2011/10/malloc-vs-calloc.html
@@ -38,6 +38,7 @@ int main() {
     int nc_id, var_id, ret_value;
     size_t inicio[2]={0};
     size_t cuenta[2]={0};
+    int nth;
 
     cuenta[0]=NX;
     cuenta[1]=NY;
@@ -45,6 +46,7 @@ int main() {
     inicio[0]=0;
     inicio[1]=0;
 
+    
     printf("leyendo archivo NC a memoria\n");
     /*
     https://www.unidata.ucar.edu/software/netcdf/docs/group__datasets.html#gaccbdb128a1640e204831256dbbc24d3e
@@ -75,13 +77,13 @@ int main() {
     */
 
 
-
+    double start_time_read= omp_get_wtime();
     ret_value= nc_open(ARCHIVO, 0, &nc_id );
     if(  ret_value != NC_NOERR){
         ERROR(ret_value);
     }
-
-
+    double tiempo_de_carga= omp_get_wtime() - start_time_read;
+    printf("Tiempo de carga: %f\n", tiempo_de_carga);
 
     //obtencion de elvarID de la variable CMI
     /*
@@ -207,9 +209,18 @@ int main() {
 
     //aca se procesan los datos: se hace la convolucion
     printf("procesando...\n");
+    
     double start_time= omp_get_wtime(); //https://www.openmp.org/spec-html/5.0/openmpsu160.html
-    convolucion(dato_entrada, kernel, dato_salida);
+
+    if (argv[1]!=NULL){
+        nth=atoi(argv[1]);
+    } else{
+        nth=1;
+    }
+    convolucion(dato_entrada, kernel, dato_salida, nth);
+    
     double tiempo= omp_get_wtime()- start_time;
+    
     printf("Procesamiento terminado. Tiempo empleado: %f\n", tiempo);
     free(dato_entrada); //de que libreria es esta funcion?
 
@@ -257,9 +268,11 @@ void write_to_bin(float *dato_entrada) {
  * @param dato_entrada
  * @param kernel
  * @param salida
+ * @param num_threads la cantidad de hilos a emplear en la operacion de convolucion
  */
-void convolucion(float *dato_entrada, float kernel[3][3], float *salida) {
+void convolucion(float *dato_entrada, float kernel[3][3], float *salida, int num_threads) {
 
+omp_set_num_threads(num_threads);
 #pragma omp parallel for collapse (2) //estudiar
     for (int fil_img = 0; fil_img < (NX-NKERNEL+1); fil_img++){ //recorro las filas de la imagen
         for (int col_img=0; col_img < (NY-NKERNEL+1); col_img++){ //recorro las columnas de la imagen
