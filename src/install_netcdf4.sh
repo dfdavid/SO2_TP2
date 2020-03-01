@@ -10,9 +10,12 @@
 
 
 mkdir source
+mkdir /home/sampaxx/netcdf/SO2/hpc
 
 BASHRC="~/.bashrc"
-BASE_DIR=$HOME'/Development/SO2/hpc' # MODIFICAR
+#BASE_DIR=$HOME'/Development/SO2/hpc' # MODIFICAR
+BASE_DIR=$HOME'/home/sampaxx/netcdf/SO2/hpc'
+
 ZLIB_DIR=$BASE_DIR"/libs/zlib"
 HDF5_DIR=$BASE_DIR"/libs/hdf5"
 NETCDF4_DIR=$BASE_DIR"/libs/netcdf"
@@ -43,10 +46,12 @@ make install
 cd ..
 
 # Install Netcdf
-v=4.1.3
-wget http://www.unidata.ucar.edu/downloads/netcdf/ftp/netcdf-${v}.tar.gz
-tar -xf netcdf-${v}.tar.gz && cd netcdf-${v}
-CPPFLAGS="-I$HDF5_DIR/include -I$ZLIB_DIR/include": LDFLAGS="-L$HDF5_DIR/lib -L$ZLIB_DIR/lib" ./configure --enable-netcdf-4 --enable-shared  --prefix=$NETCDF4_DIR
+v=4.7.3
+#wget http://www.unidata.ucar.edu/downloads/netcdf/ftp/netcdf-${v}.tar.gz
+wget ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-c-4.7.3.tar.gz
+
+tar -xf netcdf-c-${v}.tar.gz && cd netcdf-c-${v}
+CPPFLAGS="-I$HDF5_DIR/include -I$ZLIB_DIR/include": LDFLAGS="-L$HDF5_DIR/lib -L$ZLIB_DIR/lib" ./configure --enable-netcdf-4 --disable-dap --enable-shared  --prefix=$NETCDF4_DIR
 
 #make check
 make 
